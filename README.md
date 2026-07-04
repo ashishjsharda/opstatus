@@ -1,24 +1,52 @@
 # Opstatus
 
-A beautiful, self-hosted open source status page. Track services, communicate incidents, schedule maintenance, and keep your users subscribed — all from a single SQLite file.
+A beautiful, self-hosted open source status page. Track services, communicate incidents, schedule maintenance, and keep your users subscribed — all from a single SQLite file. No external database. No native compilation. Works on Windows, Mac, and Linux.
 
 ![Dark mode](https://img.shields.io/badge/theme-dark%20%2F%20light-brightgreen)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![Node](https://img.shields.io/badge/Node.js-22%2B-339933)
 ![SQLite](https://img.shields.io/badge/database-SQLite-blue)
 ![License](https://img.shields.io/badge/license-MIT-purple)
+
+---
+
+## Screenshots
+
+### Dark Mode
+![Opstatus dark mode — service uptime grid](docs/dark-services.png)
+
+### Light Mode
+![Opstatus light mode — service uptime grid](docs/light-services.png)
+
+### Incident Timeline
+![Opstatus incident timeline with update history](docs/dark-incidents.png)
 
 ---
 
 ## Features
 
 - **Service health tracking** — operational / degraded / partial outage / major outage / maintenance
-- **90-day uptime bars** — visual history per service  
+- **90-day uptime bars** — visual history per service, grouped by category
 - **Incident management** — create incidents, post timestamped updates (investigating → identified → monitoring → resolved)
 - **Maintenance windows** — schedule, track, and complete planned maintenance
-- **Email subscribers** — visitors subscribe to status updates
-- **Dark + light mode** — gorgeous on both, theme toggle built in
-- **Zero dependencies** — SQLite, no external database needed
-- **Admin panel** — full CRUD via `/admin`
+- **Email subscribers** — visitors subscribe to status updates; confirm / unsubscribe via token
+- **Dark + light mode** — gorgeous on both, three-way toggle (light / dark / system)
+- **Zero native dependencies** — uses Node's built-in `node:sqlite` — no node-gyp, no build tools needed
+- **Admin panel** — full CRUD via `/admin`, protected by session-based auth
+- **Docker ready** — multi-stage Dockerfile + `docker-compose.yml` included
+
+---
+
+## Requirements
+
+- **Node.js 22+** — Opstatus uses Node's built-in `node:sqlite` module (introduced in Node 22). Node 20 will not work.
+
+Check your version:
+```bash
+node --version   # must be v22.x or higher
+```
+
+Download Node 22 from [nodejs.org](https://nodejs.org) if needed.
 
 ---
 
@@ -43,7 +71,28 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) — public status page.  
 Open [http://localhost:3000/admin](http://localhost:3000/admin) — admin panel.
 
-Default admin password: `password` — **change this immediately**.
+Default admin password: `password` — **change this before going live**.
+
+> **Windows users:** Clone or copy the project to a short path like `C:\opstatus` to avoid Windows' 260-character MAX_PATH limit during `npm install`.
+
+---
+
+## Load Demo Data
+
+After running the dev server at least once (to initialise the database), populate it with realistic demo data:
+
+```bash
+# Run from inside the opstatus project folder
+node --experimental-sqlite scripts/seed.mjs
+```
+
+This seeds:
+- 10 services across 3 groups (Core, Infrastructure, Integrations)
+- 90 days of uptime history per service (with realistic blips)
+- 1 active incident with a 3-step timeline
+- 1 scheduled maintenance window
+
+Then restart the dev server and refresh your browser to see everything.
 
 ---
 
@@ -55,8 +104,10 @@ cp .env.example .env
 # Edit .env with your values
 
 docker compose up -d
+```
 
-# Or with plain Docker
+Or with plain Docker:
+```bash
 docker build -t opstatus .
 docker run -p 3000:3000 \
   -v opstatus_data:/app/data \
@@ -89,15 +140,12 @@ All config lives in `.env.local` (development) or environment variables (product
 
 ## Deployment
 
-Opstatus runs anywhere Node.js runs.
-
-**Vercel / Railway / Render:**  
-Deploy directly from GitHub. Set environment variables in the dashboard. Note: for persistent SQLite, mount a volume (Railway/Render support this; Vercel does not — use Docker or a VM for persistence).
+Opstatus runs anywhere Node.js 22+ runs.
 
 **VPS (Recommended for production):**
 ```bash
-# Install Node 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Install Node 22
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install nodejs
 
 # Clone and build
@@ -114,23 +162,29 @@ pm2 save && pm2 startup
 # server { listen 80; location / { proxy_pass http://localhost:3000; } }
 ```
 
+**Railway / Render:**  
+Deploy directly from GitHub. Set environment variables in the dashboard. Mount a persistent volume at `/app/data` for the SQLite file.
+
+**Vercel:**  
+Not recommended — serverless functions don't persist the SQLite file between invocations. Use a VPS or Railway instead.
+
 ---
 
 ## Admin Panel
 
-Navigate to `/admin` — you'll be prompted to log in.
+Navigate to `/admin` — you'll be redirected to `/login` if not authenticated.
 
-- **Overview** — system status at a glance, quick links
-- **Services** — add/edit/delete services, one-click status changes
-- **Incidents** — create incidents, post updates, track resolution
+- **Overview** — system status at a glance, stats for services / incidents / maintenance / subscribers
+- **Services** — add/edit/delete services, one-click status changes, drag to reorder
+- **Incidents** — create incidents, post timestamped updates, track through to resolution
 - **Maintenance** — schedule and manage maintenance windows
-- **Subscribers** — view all email subscribers
+- **Subscribers** — view confirmed and pending email subscribers
 
 ---
 
 ## API
 
-All endpoints return JSON. Admin endpoints require an active session cookie.
+All endpoints return JSON. Admin endpoints require an active session cookie (set via `POST /api/auth`).
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
@@ -146,10 +200,21 @@ All endpoints return JSON. Admin endpoints require an active session cookie.
 | `POST` | `/api/maintenance` | Admin | Schedule maintenance |
 | `PATCH` | `/api/maintenance/:id` | Admin | Update maintenance |
 | `DELETE` | `/api/maintenance/:id` | Admin | Delete maintenance |
-| `POST` | `/api/subscribers` | Public | Subscribe |
+| `POST` | `/api/subscribers` | Public | Subscribe to updates |
 | `DELETE` | `/api/subscribers?token=` | Public | Unsubscribe |
 | `POST` | `/api/auth` | — | Log in (returns session cookie) |
 | `DELETE` | `/api/auth` | — | Log out |
+
+---
+
+## Tech Stack
+
+- **[Next.js 14](https://nextjs.org)** — App Router, server components, ISR
+- **[node:sqlite](https://nodejs.org/api/sqlite.html)** — built-in Node 22 SQLite (zero native compilation)
+- **[iron-session](https://github.com/vvo/iron-session)** — encrypted session cookies
+- **[Tailwind CSS](https://tailwindcss.com)** — utility-first styling
+- **[next-themes](https://github.com/pacocoursey/next-themes)** — dark/light/system theme toggle
+- **[bcryptjs](https://github.com/dcodeIO/bcrypt.js)** — password hashing
 
 ---
 
