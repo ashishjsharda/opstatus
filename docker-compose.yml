@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+  opstatus:
+    build: .
+    ports:
+      - '3000:3000'
+    volumes:
+      - opstatus_data:/app/data
+    environment:
+      - NEXT_PUBLIC_SITE_NAME=${NEXT_PUBLIC_SITE_NAME:-My Status Page}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-password}
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-32chars-random-string-!!}
+      - DATABASE_PATH=/app/data/opstatus.db
+      # Optional email:
+      # - SMTP_HOST=smtp.mailgun.org
+      # - SMTP_PORT=587
+      # - SMTP_USER=postmaster@yourdomain.com
+      # - SMTP_PASS=your-password
+      # - SMTP_FROM=status@yourdomain.com
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/api/services']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  opstatus_data:

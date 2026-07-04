@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #ffffff;
+    --surface: #f8f9fa;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --muted: #6b7280;
+    --accent: #22c55e;
+  }
+
+  .dark {
+    --bg: #0b0b0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #1e1e2e;
+    --text: #f1f1f5;
+    --muted: #8b8ba7;
+    --accent: #4ade80;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  ::selection {
+    background-color: #4ade8040;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-2xl border backdrop-blur-sm;
+    background: color-mix(in srgb, var(--card) 80%, transparent);
+    border-color: var(--border);
+  }
+
+  .dark .glass-card {
+    background: color-mix(in srgb, var(--card) 60%, transparent);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  .light .glass-card {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+
+  .status-dot.operational  { background: #22c55e; box-shadow: 0 0 6px #22c55e80; }
+  .status-dot.degraded     { background: #f59e0b; box-shadow: 0 0 6px #f59e0b80; }
+  .status-dot.partial_outage { background: #f97316; box-shadow: 0 0 6px #f9731680; }
+  .status-dot.major_outage { background: #ef4444; box-shadow: 0 0 6px #ef444480; }
+  .status-dot.maintenance  { background: #6366f1; box-shadow: 0 0 6px #6366f180; }
+
+  .uptime-bar {
+    @apply h-full rounded-sm transition-all duration-200;
+  }
+  .uptime-bar.operational    { @apply bg-green-500; }
+  .uptime-bar.degraded       { @apply bg-amber-500; }
+  .uptime-bar.partial_outage { @apply bg-orange-500; }
+  .uptime-bar.major_outage   { @apply bg-red-500; }
+  .uptime-bar.maintenance    { @apply bg-indigo-500; }
+  .uptime-bar.empty          { @apply bg-gray-200 dark:bg-dark-muted; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-gray-300 dark:bg-dark-muted; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-gray-400 dark:bg-gray-600; }
+}
